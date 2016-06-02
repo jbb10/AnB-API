@@ -2,18 +2,18 @@ SRCFILES = Parser.y Lexer.x Ast.hs
 
 GENERATED = Lexer.hs Parser.hs
 
-OUTPUT = Main
+OUTPUT = anbapi
 
 ########################
 
 all:
-	make anbpp
-	./Main keyserver_basis.AnB++
+	make anbapi
+	./anbapi keyserver_basis.AnB++
 
 ########################
 
-anbpp:	$(SRCFILES) $(GENERATED)
-	ghc -o Main Main.hs
+anbapi:	$(SRCFILES) $(GENERATED)
+	ghc -o $(OUTPUT) AnB-API.hs
 
 ########################
 
