@@ -1,0 +1,49 @@
+Problem: H530;
+
+Types:
+Agent	: {a,s};
+U	: {a,i};
+S	: {s};
+H	: {a};
+D	: {i};
+DU	: {i};
+Sts	: {valid,revoked};
+PK,NPK	: value;
+M1,M2	: untyped;
+
+Sets:
+ring(U), db(S,U,Sts);
+
+Functions:
+public sign/2, scrypt/2, crypt/2, pair/2, h/2;
+private inv/1;
+
+Facts:
+haskey/1, f/3;
+
+Rules:
+
+=[PK]=>
+PK in ring(H).PK in db(S,H,valid).iknows(PK)
+
+
+=[PK]=>
+PK in ring(i).PK in db(S,i,valid).iknows(pair(PK, inv(PK)))
+
+\U.
+PK in ring(U)
+=[NPK]=>
+NPK in ring(U).iknows(crypt(inv(PK),pair(U, NPK)))
+
+\NPK,S,U.
+iknows(crypt(inv(PK),pair(U, NPK))).forall U,Sts. NPK notin db(S,U,Sts)
+=>
+NPK in db(S,U,valid).PK in db(S,U,revoked).iknows(inv(PK))
+
+
+=>
+iknows(crypt(inv(PK),pair(U, NPK)))
+
+
+
+

@@ -12,94 +12,162 @@ All Rights Reserved.
 
 -}
 
-module Ast where
+module Ast(Ident,IdentList,Msg(..),Protocol,
+            TypeDecls,TypeDecl,SetDecl,SetDecls,
+            FactDecl,FactDecls,Peer,Channel(..),SetExp,
+            InSetExp,InSetIdent(..),Set,
+            FactExp,Action(..),Key(..),PublicKey,
+            PrivateKey,GenericKey,Subprotocol,
+            Subprotocols,AttackDecls,Attack,AttackAction(..)) where
 import Data.List
 import Data.Maybe
-import Msg
 
--- | The type @Protocol@ is the type for the result of the AnB-Parser,
+type Ident = String -- ^ this type is used for all symbols (constants, variables, functions, facts).
+
+-- | This type is used for numbers in fact declarations
+type Number = Int
+
+-- | A list of identifiers, used in various places
+type IdentList = [Ident]
+
+
+-- | The type @Protocol@ is the type for the result of the parser,
 -- i.e. the topmost structure of the Abstract Syntax Tree (AST)
-type Protocol = (String,Types,Knowledge,Abstraction,Actions,Goals)
+type Protocol = (String,TypeDecls,SetDecls,FactDecls,Subprotocols,AttackDecls)
 
------------ Protocol Description --------------
+-- | A type declaration consist of identifiers (the name of the types)
+-- and a list of identifiers over which the type/types span
+type Set = Bool
+type TypeDecl = (IdentList,IdentList,Set)
 
--- | The (atomic) type identifiers
-data Type = Agent Bool Bool -- ^ flags: static, honest; both currently unused
-          | Number -- ^ aka nonce
-          | SeqNumber -- ^ aka sequence number
-          | PublicKey 
-          | SymmetricKey 
-          | Function -- ^ for free user-defined function symbols (no input/output type specification)
-          | Purpose -- ^ special type for the purpose-argument of witness and request facts
-          | Custom String -- ^ Now allowing users to introduce their custom types
-          | Untyped -- ^ default for constants/variables that do not have a type declaration 
-          deriving (Eq,Show)
+-- | List of type declarations
+type TypeDecls = [TypeDecl]
 
--- | A type declaration consist of a type and a list of identifiers
--- (constants or variables) that have that type
-type Types = [(Type,[Ident])] 
+-- | A set is a basic database construct. The first identifier
+-- represents the variable name of the set and the list of
+-- identifiers represent the variables the set spans.
+type SetDecl = (Ident, IdentList)
 
--- | A knowledge declaration consists of an identifier for a role
--- (constant or variable; should be of type Agent!) and a list of
--- messages that this role initially knows. The variables in that
--- knowledge should always be of type Agent; this is not checked now,
--- however. NEW: Additionally, we have a set of pairs of messages that
--- express inequalities of terms in the instantiation of the
--- knowledge. One can use this for instance to express with A/=B that
--- the roles A and B must be played by different agents.
-type Knowledge = ([(Ident,[Msg])],[(Msg,Msg)])
+-- | List of set declarations
+type SetDecls = [SetDecl]
 
+-- | A fact declaration consists of an identifier representing
+-- the variable name of the set and and integer representing the
+-- number of arguments it takes.
+type FactDecl = (Ident,Int)
+
+-- | A list of fact decla
+type FactDecls = [FactDecl]
 -- | A peer is the endpoint of a channel (i.e. sender or
 -- receiver). The identifier is the real name (according to the
--- specification), the bool says whether this agent is
--- pseudonymous. The third is the pseudonym in case the agent is
--- pseudonymous.
-type Peer = (Ident,Bool,Maybe Msg)
+-- specification)
+type Peer = (Ident)
 
--- | A channel is characterized by a sender and receiver peer, and by
--- a channel type, e.g.  @ ((A,False,Nothing),Secure,(B,True,PKB)) @
-type Channel = (Peer,ChannelType,Peer)
+-- | A channel is characterized by a sender and receiver
+-- If it's a Unicast channel represents a cannel that is directed
+-- from one peer to another. If it's a broadcast channel,
+-- the peer broadcasts the message, making it a part of
+-- everybody's knowledge.
+type Channel = (Peer,Peer)
 
--- | An action consists of a channel (sender, channeltype, receiver)
--- and a message being sent. Additionally, there are two optional
--- message terms for modeling zero-knowledge protocols, namely a
--- pattern for the receiver, and a message that the sender must know
-type Action = (Channel,Msg,Maybe Msg,Maybe Msg) 
+type SetExp = (Ident,IdentList)
 
--- | List of actions
-type Actions = [Action]
+data InSetIdent = Ident Ident
+                | Underscore Ident
+                deriving (Eq,Show)
 
--- | The different supported channel types
-data ChannelType = Insecure -- ^ @ -> @ standard channel
-                 | Authentic  -- ^ @ *-> @ sender and intended recipient secured
-                 | Confidential  -- ^ @ ->* @ recipient secured
-                 | Secure   -- ^ @ *->* @ both authentic and confidential
-     		 | FreshAuthentic  -- ^ @ *->> @ like authentic, but protected against replay
-                 | FreshSecure -- ^ @ *->>* @ like secure, but protected against replay
-                 deriving (Eq,Show)
+type InSetIdentList = [InSetIdent]
 
--- | The pre-defined set of goals
-data Goal = ChGoal Channel Msg -- ^ Goals that are expressed in channel notation
-          | Secret Msg [Peer] -- ^ Standard secrecy goal
-	  | Authentication Peer Peer Msg -- ^ Standard authentication
-                                         -- goal (including replay
-                                         -- protection; corresponds to
-                                         -- Lowe's injective
-                                         -- agreement)
-	  | WAuthentication Peer Peer Msg -- ^ Weaker form of
-                                          -- authentication: no
-                                          -- protection against
-                                          -- replay. Corresponds to
-                                          -- Lowe's non-injective
-                                          -- agreement.
-	  deriving (Eq,Show)
+type InSetExp = (Ident,InSetIdentList)
 
--- | List of gaols
-type Goals = [Goal]
+type FactExp = (Ident,Msg)
 
--- | For the annotation of abstractions: to express that a variable
--- (identifier) should be abstracted into a given term. This
--- represents replacing in the entire description all occurrences of
--- that variable with that term.
-type Abstraction = [ (Ident,Msg) ]
- 
+type Receiver = Ident
+
+data Action = Insert Ident SetExp
+            | Delete Ident SetExp
+            | Select Ident SetExp
+            | Create Ident
+            | Ifnotin Ident InSetExp
+            | Ifin Ident InSetExp
+            | Fact FactExp
+            | Iffact FactExp
+            | Transmission Channel Msg
+            | Sync Channel
+            deriving (Eq)
+
+printSet :: SetExp -> String
+printSet (ident,identlist) = ident ++ "(" ++ (intercalate "," identlist) ++ ")"
+
+printInSet :: InSetExp -> String
+printInSet (ident,insetidentlist) = ident ++ "(" ++ (show insetidentlist) ++ ")"
+
+printFact :: FactExp -> String
+printFact (ident,msg) = ident ++ "(" ++ (show msg) ++ ")"
+
+instance Show Action where
+    show (Insert ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Delete ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Select ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Create ident) = ident
+    show (Ifnotin ident insetexp) = ""
+    show (Ifin ident insetexp) = ident ++ " in " ++ (printInSet insetexp)
+    show (Fact factexp) = printFact factexp
+    show (Iffact factexp) = "if " ++ (printFact factexp)
+    show (Transmission ("_",receiver) msg) = "iknows(" ++ (show msg) ++ ")"
+    show (Transmission (sender,"_") msg) = "iknows(" ++ (show msg) ++ ")"
+    show (Transmission (sender,receiver) msg) = "iknows(" ++ (show msg) ++ ")"
+    show (Sync channel) = "sync" --This is for debuggin purposes only
+
+data Key = PublicKey Ident
+            | PrivateKey Ident
+            | SharedKey IdentList
+            deriving (Eq)
+
+instance Show Key where
+    show (PublicKey ident) = "pk(" ++ ident ++ ")"
+    show (PrivateKey ident) = "inv(" ++ ident ++ ")"
+    show (SharedKey identlist) = "sk(" ++ (intercalate "," identlist) ++ ")"
+
+type PublicKey = (Ident)
+
+type PrivateKey = (Ident)
+
+type GenericKey = (Ident,IdentList)
+
+data Msg = Atom Ident -- Atomic terms, i.e. a constant (lower-case) or a variable (upper-case)
+            | Cat Msg Msg
+            | Key Key
+            | Crypt Msg Key
+            | Scrypt Msg Key
+            | FactExp Ident Msg
+            deriving (Eq)
+
+instance Show Msg where
+    show (Atom ident) = ident
+    show (Cat msg1 msg2) = "pair(" ++ (show msg1) ++ ", " ++ (show msg2) ++ ")"
+    show (Key key) = show key
+    show (Crypt msg key) = "crypt(" ++ (show key) ++ "," ++ (show msg) ++ ")"
+    show (Scrypt msg key) =  "scrypt(" ++ (show key) ++ "," ++ (show msg) ++ ")"
+    show (FactExp ident msg) = ident ++ "(" ++ (show msg) ++ ")"
+
+-- | A subprotocol is a sequence of actions that together represent
+-- a high-level action in the protocol (e.g. an API call).
+type Subprotocol = [Action]
+
+-- | List of Subprotocols
+type Subprotocols = [Subprotocol]
+
+-- | List of all the AttackDecls
+type AttackDecls = [Attack]
+
+-- | An Attack is a specific sequence of actions that result in an
+-- attack.
+type Attack = [AttackAction]
+
+data AttackAction = ToRefAction Msg
+                    | RefSelect Ident SetExp
+                    | RefIfnotin Ident InSetExp
+                    | RefIfin Ident InSetExp
+                    | RefIffact FactExp
+                    deriving (Eq)

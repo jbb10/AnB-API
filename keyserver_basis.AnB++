@@ -1,0 +1,53 @@
+Protocol: H530
+
+# The constants  t1 - t5 are tags for the
+# different MACs to prevent type-flaw attacks
+
+Types:
+Agent  : {a,s} #{a,b,c,i,s}
+U      : {a,i} #{a,b,c}
+S      : {s}
+H      : {a} # {a,b}
+D      : {i} # {c,i}
+DU     : {i} # {c}
+Sts    : {valid,revoked}
+PK,NPK : value
+M1,M2  : untyped
+
+Sets:
+ring(U), db(S,U,Sts)
+
+Facts:
+haskey/1, f/3
+
+Subprotocols:
+#Honest user creates a new public key
+H: create(PK)
+H: insert(PK,ring(H))
+H->S: sync
+S: insert(PK,db(S,H,valid))
+S->_: PK
+---
+#Dishonest user create a new public key
+i: create(PK)
+i: insert(PK,ring(i))
+i->S: sync
+S: insert(PK,db(S,i,valid))
+S->i: PK, inv(PK) #Dishonest user shares their new private key with other dishonest users
+---
+U: select PK from ring(U)
+U: create(NPK)
+U: insert(NPK,ring(U))
+U: delete(PK,ring(U))
+U->S: {U,NPK}inv(PK)
+S: if NPK notin db(S,_,_)
+S: insert(NPK,db(S,U,valid))
+S: delete(PK,db(S,U,valid))
+S: insert(PK,db(S,U,revoked))
+S->U: inv(PK)
+---
+U->S: {U,NPK}inv(PK)
+
+Attacks:
+->referee: inv(PK)
+referee: if PK in db(S,H,valid)
