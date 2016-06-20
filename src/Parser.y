@@ -71,13 +71,13 @@ identlist :: {[Ident]}
     | ident "," identlist {$1:$3}
 
 typedecls :: {TypeDecls}
-    : typedecl {[$1]}
-    | typedecl typedecls {$1:$2}
+    : typedecl {$1}
+    | typedecl typedecls {$1 ++ $2}
 
-typedecl :: {TypeDecl}
-    : identlist ":" "{" identlist "}" {($1,(Set $4))}
-    | identlist ":" "value" {($1,(Value))}
-    | identlist ":" "untyped" {($1,(Untyped))}
+typedecl :: {[TypeDecl]}
+    : identlist ":" "{" identlist "}" {generateTypeDeclFromList $1 (Set $4)}
+    | identlist ":" "value" {generateTypeDeclFromList $1 (Value)}
+    | identlist ":" "untyped" {generateTypeDeclFromList $1 (Untyped)}
 
 setdecls :: {SetDecls}
     : {- empty -} {[]}
@@ -149,13 +149,17 @@ msg :: {Msg}
     | "{" msg "}" key     {Crypt $2 $4}
     | "{|" msg "|}" key   {Scrypt $2 $4}
     | key                 {Key $1}
-    | ident "(" msg ")"   {Hash $1 $3}
+    | "h" "(" ident "," msg ")" {Hash $3 $5}
     | "(" msg ")"         {$2}
 
 key :: {Key}
-    : publickey {PublicKey $1}
+    : generickey {GenericKey $1}
+    | publickey {PublicKey $1}
     | privatekey {PrivateKey $1}
     | sharedkey {SharedKey $1}
+
+generickey :: {Ident}
+    : ident {$1}
 
 publickey :: {Ident}
     : "pk" "(" ident ")" {$3}

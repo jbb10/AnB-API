@@ -1,23 +1,19 @@
-Protocol: H530
-
-# The constants  t1 - t5 are tags for the
-# different MACs to prevent type-flaw attacks
+Protocol: Keyserver
 
 Types:
-Agents      : {a,s,i}
-Dishonest   : {i}
-U           : {a,i}
-S           : {s}
-H           : {a}
-D           : {i}
-Sts         : {valid,revoked}
-PK,NPK      : value
+Agents      : {a,b,s,i} #Mandatory; contains all agents in the protocol
+Dishonest   : {i}       #Mandatory; contains dishonest agents in the protocol
+H           : {a,b}     #These are our honest users
+S           : {s}       #This is our server
+U           : {a,b,i}   #These are our users
+Sts         : {valid,revoked} #These are statuses for our keys
+PK,NPK      : value     #Keys used during protocol run
 
 Sets:
-ring(U), db(S,U,Sts)
+ring(U), db(S,U,Sts)    #Our sets; user keyring and server database
 
-Facts:
-haskey/1, f/3
+Facts:                  #This protocol does not make use of facts. We
+#empty                  #leave an optional comment there for clarity.
 
 Subprotocols:
 #Honest user creates a new public key
@@ -25,26 +21,27 @@ H: create(PK)
 H: insert(PK,ring(H))
 H->S: sync
 S: insert(PK,db(S,H,valid))
-S->_: PK
+S->H: PK
 ---
 #Dishonest user creates a new public key
 i: create(PK)
 i: insert(PK,ring(i))
 i->S: sync
 S: insert(PK,db(S,i,valid))
-S->i: PK, inv(PK) #Dishonest user shares their new private key with other dishonest users
+S->i: PK, inv(PK)  #intruder shares their new private key with dishonest users
 ---
-U: select PK from ring(U)
-U: create(NPK)
+#A user sends a new key to be registered with the server and
+#the old one is revoked
+U: select PK from ring(U)      #We select PK because we need to use it
+U: create(NPK)                 #for signing when we send the new key
 U: insert(NPK,ring(U))
-U: delete(PK,ring(U))
 U->S: {U,NPK}inv(PK)
-S: if NPK notin db(S,_,_)
-S: insert(NPK,db(S,U,valid))
-S: delete(PK,db(S,U,valid))
+S: if NPK notin db(S,_,_)      #The server checks if the new key is in its
+S: insert(NPK,db(S,U,valid))   #database of all users and all states before
+S: select PK from db(S,U,valid)#inserting it as a valid key and revoking
+S: delete(PK,db(S,U,valid))    #the old one
 S: insert(PK,db(S,U,revoked))
-S->U: inv(PK)
 
 Attacks:
-->referee: inv(PK)
+->referee: inv(PK)              #The referee receives a private key
 referee: if PK in db(S,H,valid)

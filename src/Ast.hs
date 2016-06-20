@@ -14,26 +14,24 @@ All Rights Reserved.
 
 module Ast(Ident,IdentList,Msg(..),Protocol,
             TypeDecls,TypeDecl,SetDecl,SetDecls,
-            FactDecl,FactDecls,Peer,Channel(..),SetExp,
+            FactDecl,FactDecls,Channel(..),SetExp,
             InSetExp,InSetIdent(..),Type(..),
             FactExp,Action(..),Key(..),PublicKey,
             PrivateKey,GenericKey,Subprotocol,
-            Subprotocols,AttackDecls,Attack) where
+            Subprotocols,AttackDecls,Attack,
+            generateTypeDeclFromList) where
 import Data.List
 import Data.Maybe
 
-type Ident = String -- ^ this type is used for all symbols (constants, variables, functions, facts).
-
--- | This type is used for numbers in fact declarations
-type Number = Int
-
--- | A list of identifiers, used in various places
-type IdentList = [Ident]
-
-
--- | The type @Protocol@ is the type for the result of the parser,
+-- | The type Protocol is the type for the result of the parser,
 -- i.e. the topmost structure of the Abstract Syntax Tree (AST)
-type Protocol = (String,TypeDecls,SetDecls,FactDecls,Subprotocols,AttackDecls)
+type Protocol = (Ident,TypeDecls,SetDecls,FactDecls,Subprotocols,AttackDecls)
+
+-- | This type is used for all symbols (constants, variables, functions, facts).
+type Ident = String
+
+-- | Simply a list of identifiers
+type IdentList = [Ident]
 
 -- | A type declaration consist of identifiers (the name of the types)
 -- and a list of identifiers over which the type/types span
@@ -41,7 +39,7 @@ data Type = Set IdentList
           | Value
           | Untyped
 
-type TypeDecl = (IdentList,Type)
+type TypeDecl = (Ident,Type)
 
 -- | List of type declarations
 type TypeDecls = [TypeDecl]
@@ -62,17 +60,8 @@ type FactDecl = (Ident,Int)
 -- | A list of fact declarations
 type FactDecls = [FactDecl]
 
--- | A peer is the endpoint of a channel (i.e. sender or
--- receiver). The identifier is the real name (according to the
--- specification)
-type Peer = (Ident)
-
--- | A channel is characterized by a sender and receiver
--- If it's a Unicast channel represents a cannel that is directed
--- from one peer to another. If it's a broadcast channel,
--- the peer broadcasts the message, making it a part of
--- everybody's knowledge.
-type Channel = (Peer,Peer)
+-- | A channel is characterized by a sender and receiver.
+type Channel = (Ident,Ident)
 
 type SetExp = (Ident,IdentList)
 
@@ -89,8 +78,6 @@ type InSetIdentList = [InSetIdent]
 type InSetExp = (Ident,InSetIdentList)
 
 type FactExp = (Ident,Msg)
-
-type Receiver = Ident
 
 data Action = Insert Ident SetExp
             | Delete Ident SetExp
@@ -124,7 +111,7 @@ instance Show Action where
     show (Select ident setexp) = ident ++ " in " ++ (printSet setexp)
     show (Create ident) = ident
     show (Ifnotin ident insetexp) = "" -- This is taken care of in showleft0
-    show (Ifin ident insetexp) = ident ++ " in " ++ (printInSet insetexp)
+    show (Ifin ident insetexp) = "" -- This is taken care of in compileSubprotocol0
     show (Fact factexp) = printFact factexp
     show (Iffact factexp) = printFact factexp
     show (Transmission ("_",receiver) msg) = "iknows(" ++ (show msg) ++ ")"
@@ -137,12 +124,14 @@ instance Show Action where
     show (RefIfin ident insetexp) =ident ++ " in " ++ (printInSet insetexp)
     show (RefIffact factexp) = printFact factexp
 
-data Key = PublicKey Ident
+data Key = GenericKey Ident
+            | PublicKey Ident
             | PrivateKey Ident
             | SharedKey IdentList
             deriving (Eq)
 
 instance Show Key where
+    show (GenericKey ident) = ident
     show (PublicKey ident) = "pk(" ++ ident ++ ")"
     show (PrivateKey ident) = "inv(" ++ ident ++ ")"
     show (SharedKey identlist) = "sk(" ++ (intercalate "," identlist) ++ ")"
@@ -154,11 +143,11 @@ type PrivateKey = (Ident)
 type GenericKey = (Ident,IdentList)
 
 data Msg = Atom Ident -- Atomic terms, i.e. a constant (lower-case) or a variable (upper-case)
-            | Cat Msg Msg
-            | Key Key
-            | Crypt Msg Key
-            | Scrypt Msg Key
-            | Hash Ident Msg
+            | Cat Msg Msg -- Concatenation of two messages
+            | Key Key -- A Key
+            | Crypt Msg Key -- Asymmetrically encrypted message
+            | Scrypt Msg Key -- Symmetrically encrypted message
+            | Hash Ident Msg -- Hashed message (Ident corresponds to a hash constant)
             deriving (Eq)
 
 instance Show Msg where
@@ -182,3 +171,8 @@ type AttackDecls = [Attack]
 -- | An Attack is a specific sequence of actions that result in an
 -- attack.
 type Attack = [Action]
+
+-- | These funcitons are used in the Parser
+generateTypeDeclFromList :: IdentList -> Type -> [(Ident,Type)]
+generateTypeDeclFromList [] _ = []
+generateTypeDeclFromList (ident:rest) ttype = (ident,ttype) : (generateTypeDeclFromList rest ttype)

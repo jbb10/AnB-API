@@ -1,0 +1,43 @@
+Protocol: key_separation
+
+Types:
+Agents  : {token, i}
+Dishonest: {i}
+HashConstants: {h1}
+Token   : {token}  #We use the token constant in the protocol and
+K1,K2   : value    #the Token variable in the set declarations
+M       : untyped
+
+Sets:
+extract(Token), wrap(Token), decrypt(Token), sensitive(Token)
+
+Facts:
+#empty
+
+Subprotocols:
+#createExtract
+token: create(K1)
+token: insert(K1, sensitive(token))
+token: insert(K1, extract(token))
+token->_: h(h1,K1)
+---
+#createWrap
+token: create(K2)
+token: insert(K2, wrap(token))
+token: insert(K2, decrypt(token))
+token->_: h(h1,K2)
+---
+#Wrapping
+_->token: h(h1,K1),h(h1,K2)
+token: if K1 in extract(token)
+token: if K2 in wrap(token)
+token->_: {|K1|}K2
+---
+#Decrypt
+_->token: h(h1,K2),{|M|}K2
+token: if K2 in decrypt(token)
+token->_: M
+
+Attacks:
+->referee: K1
+referee: if K1 in sensitive(token)
