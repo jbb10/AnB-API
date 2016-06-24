@@ -107,18 +107,18 @@ actionlist :: {[Action]}
     | action actionlist {$1:$2}
 
 action :: {Action}
-    : localaction "insert" "(" ident "," setexp ")" {Insert $4 $6}
-    | localaction "delete" "(" ident "," setexp ")" {Delete $4 $6}
-    | localaction "select" ident "from" setexp {Select $3 $5}
-    | localaction "create" "(" ident ")" {Create $4}
-    | localaction "if" ident "notin" insetexp {Ifnotin $3 $5}
-    | localaction factexp {Fact $2}
-    | localaction "if" factexp {Iffact $3}
-    | localaction "if" ident "in" insetexp {Ifin $3 $5}
+    : localaction "insert" "(" ident "," setexp ")" {Insert $1 $4 $6}
+    | localaction "delete" "(" ident "," setexp ")" {Delete $1 $4 $6}
+    | localaction "select" ident "from" setexp {Select $1 $3 $5}
+    | localaction "create" "(" ident ")" {Create $1 $4}
+    | localaction "if" ident "notin" insetexp {Ifnotin $1 $3 $5}
+    | localaction factexp {Fact $1 $2}
+    | localaction "if" factexp {Iffact $1 $3}
+    | localaction "if" ident "in" insetexp {Ifin $1 $3 $5}
     | channel ":" msg {Transmission $1 $3}
     | channel ":" "sync" {Sync $1}
 
-localaction :: {Ident}
+localaction :: {Agent}
     : ident ":" {$1}
 
 setexp :: {SetExp}
@@ -133,7 +133,7 @@ insetidentlist :: {[InSetIdent]}
 
 insetident :: {InSetIdent}
     : ident {Ident $1}
-    | "_" {Underscore "_"}
+    | "_" {Underscore}
 
 factexp :: {FactExp}
     : ident "(" msg ")" {($1,$3)}

@@ -1,0 +1,3 @@
+fpaslan-mac $1 > "$1.spass_temp"
+SPASS "$1.spass_temp"
+rm "$1.spass_temp"

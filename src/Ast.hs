@@ -15,7 +15,7 @@ All Rights Reserved.
 module Ast(Ident,IdentList,Msg(..),Protocol,
             TypeDecls,TypeDecl,SetDecl,SetDecls,
             FactDecl,FactDecls,Channel(..),SetExp,
-            InSetExp,InSetIdent(..),Type(..),
+            InSetExp,InSetIdent(..),Type(..), Agent,
             FactExp,Action(..),Key(..),PublicKey,
             PrivateKey,GenericKey,Subprotocol,
             Subprotocols,AttackDecls,Attack,
@@ -38,6 +38,7 @@ type IdentList = [Ident]
 data Type = Set IdentList
           | Value
           | Untyped
+          deriving(Show)
 
 type TypeDecl = (Ident,Type)
 
@@ -66,12 +67,12 @@ type Channel = (Ident,Ident)
 type SetExp = (Ident,IdentList)
 
 data InSetIdent = Ident Ident
-                | Underscore Ident
+                | Underscore
                 deriving (Eq)
 
 instance Show InSetIdent where
     show (Ident ident) = ident
-    show (Underscore _) = "_"
+    show (Underscore) = "_"
 
 type InSetIdentList = [InSetIdent]
 
@@ -79,14 +80,16 @@ type InSetExp = (Ident,InSetIdentList)
 
 type FactExp = (Ident,Msg)
 
-data Action = Insert Ident SetExp
-            | Delete Ident SetExp
-            | Select Ident SetExp
-            | Create Ident
-            | Ifnotin Ident InSetExp
-            | Ifin Ident InSetExp
-            | Fact FactExp
-            | Iffact FactExp
+type Agent = String
+
+data Action = Insert Agent Ident SetExp
+            | Delete Agent Ident SetExp
+            | Select Agent Ident SetExp
+            | Create Agent Ident
+            | Ifnotin Agent Ident InSetExp
+            | Ifin Agent Ident InSetExp
+            | Fact Agent FactExp
+            | Iffact Agent FactExp
             | Transmission Channel Msg
             | Sync Channel
             | ToRefAction Msg
@@ -106,14 +109,14 @@ printFact :: FactExp -> String
 printFact (ident,msg) = ident ++ "(" ++ (show msg) ++ ")"
 
 instance Show Action where
-    show (Insert ident setexp) = ident ++ " in " ++ (printSet setexp)
-    show (Delete ident setexp) = ident ++ " in " ++ (printSet setexp)
-    show (Select ident setexp) = ident ++ " in " ++ (printSet setexp)
-    show (Create ident) = ident
-    show (Ifnotin ident insetexp) = "" -- This is taken care of in showleft0
-    show (Ifin ident insetexp) = "" -- This is taken care of in compileSubprotocol0
-    show (Fact factexp) = printFact factexp
-    show (Iffact factexp) = printFact factexp
+    show (Insert _ ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Delete _ ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Select _ ident setexp) = ident ++ " in " ++ (printSet setexp)
+    show (Create _ ident) = ident
+    show (Ifnotin _ ident insetexp) = "" -- This is taken care of in showleft0
+    show (Ifin _ ident insetexp) = "" -- This is taken care of in compileSubprotocol0
+    show (Fact _ factexp) = printFact factexp
+    show (Iffact _ factexp) = printFact factexp
     show (Transmission ("_",receiver) msg) = "iknows(" ++ (show msg) ++ ")"
     show (Transmission (sender,"_") msg) = "iknows(" ++ (show msg) ++ ")"
     show (Transmission (sender,receiver) msg) = "iknows(" ++ (show msg) ++ ")"
@@ -155,8 +158,8 @@ instance Show Msg where
     show (Cat msg1 msg2) = "pair(" ++ (show msg1) ++ ", " ++ (show msg2) ++ ")"
     show (Key key) = show key
     show (Crypt msg key) = "crypt(" ++ (show key) ++ "," ++ (show msg) ++ ")"
-    show (Scrypt msg key) =  "scrypt(" ++ (show key) ++ "," ++ (show msg) ++ ")"
-    show (Hash ident msg) =  "h(" ++ ident ++ "," ++ (show msg) ++ ")"
+    show (Scrypt msg key) = "scrypt(" ++ (show key) ++ "," ++ (show msg) ++ ")"
+    show (Hash ident msg) = "h(" ++ ident ++ "," ++ (show msg) ++ ")"
 
 -- | A subprotocol is a sequence of actions that together represent
 -- a high-level action in the protocol (e.g. an API call).

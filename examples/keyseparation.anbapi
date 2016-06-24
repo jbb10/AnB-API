@@ -27,13 +27,13 @@ token: insert(K2, wrap(token))
 token: insert(K2, decrypt(token))
 token->_: h(h1,K2)
 ---
-#Wrapping
+#wrap
 _->token: h(h1,K1),h(h1,K2)
 token: if K1 in extract(token)
 token: if K2 in wrap(token)
 token->_: {|K1|}K2
 ---
-#Decrypt
+#decrypt
 _->token: h(h1,K2),{|M|}K2
 token: if K2 in decrypt(token)
 token->_: M
